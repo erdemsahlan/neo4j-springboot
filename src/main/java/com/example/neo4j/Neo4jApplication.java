@@ -1,19 +1,28 @@
 package com.example.neo4j;
+
 import com.example.neo4j.Repository.IMovieRepository;
 import com.example.neo4j.entity.Movie;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Session;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.data.neo4j.repository.config.EnableNeo4jRepositories;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.concurrent.Executor;
+
+import static java.lang.Thread.sleep;
 
 @SpringBootApplication
 @EnableNeo4jRepositories(considerNestedRepositories = true)
-public class Neo4jApplication  implements CommandLineRunner {
+public class Neo4jApplication implements CommandLineRunner {
 
     @Autowired
     Driver driver;
@@ -24,8 +33,59 @@ public class Neo4jApplication  implements CommandLineRunner {
     public static void main(String[] args) {
         SpringApplication.run(Neo4jApplication.class, args);
     }
+    @Transactional
+    public void func1() throws InterruptedException {
+        System.err.println("FUNC1-->Start");
+        sleep(1000);
+        for (var i = 1000000; i < 1100000; i++) {
+            String query = "merge (m:Movie{custom:" + i + "})" +
+                    "merge(n:Movie{custom:" + (i + 1) + "})" +
+                    "merge(m)-[r:bond]->(n)";
+            try (Session session = driver.session()) {
+                session.run(query);
+                System.err.println("FUNC1-->" + i);
+            } catch (Exception e) {
+                throw e;
+            }
+        }
+        System.err.println("FUNC1-->END");
+    }
 
+    @Transactional
+    public void func2() throws InterruptedException {
+        System.err.println("FUNC2-->Start");
+        sleep(1000);
+        for (var i = 1100000; i < 1200000; i++) {
+            String query = "merge (m:Movie{custom:" + i + "})" +
+                    "merge(n:Movie{custom:" + (i + 1) + "})" +
+                    "merge(m)-[r:bond]->(n)";
+            try (Session session = driver.session()) {
+                session.run(query);
+                System.err.println("FUNC2-->" + i);
+            } catch (Exception e) {
+                throw e;
+            }
+        }
+        System.err.println("FUNC2-->END");
+    }
 
+    @Transactional
+    public void func3() throws InterruptedException {
+        System.err.println("FUNC3-->Start");
+        sleep(1000);
+        for (var i = 1200000; i < 1300000; i++) {
+            String query = "merge (m:Person{custom:" + i + "})" +
+                    "merge(n:Person{custom:" + (i + 1) + "})" +
+                    "merge(m)-[r:bond]->(n)";
+            try (Session session = driver.session()) {
+                session.run(query);
+                System.err.println("FUNC3-->" + i);
+            } catch (Exception e) {
+                throw e;
+            }
+        }
+        System.err.println("FUNC3-->END");
+    }
     @Override
     public void run(String... args) throws Exception {
 //        try(var session = driver.session()) {
@@ -44,69 +104,52 @@ public class Neo4jApplication  implements CommandLineRunner {
 //            throw e;
 //        }
 
-        Thread t1 = new Thread(()->{
-            func1();
+//        Thread t1 = new Thread(()->{
+//            func1();
+//        });
+//        Thread t2 = new Thread(()->{
+//            func2();
+//        });
+//        Thread t3 = new Thread(()->{
+//            func3();
+//        });
+//        t1.start();
+//        t2.start();
+//        t3.start();
+//        t1.join();
+//        t2.join();
+//        t3.join();
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(3);  // Başlangıçta çalışan thread sayısı
+        executor.setMaxPoolSize(10);  // Maksimum thread sayısı
+        executor.setQueueCapacity(25);  // Kuyruk kapasitesi
+        executor.setThreadNamePrefix("Executor-");  // Thread isimlendirme
+        executor.initialize();
+
+        executor.execute(()->{
+           try{
+               func1();
+           }catch (Exception e){
+               System.err.println("Thread-1 HATA");
+           }
         });
-        Thread t2 = new Thread(()->{
-            func2();
+        executor.execute(()->{
+            try{
+                func2();
+            }catch (Exception e){
+                System.err.println("Thread-2 HATA");
+            }
         });
-        Thread t3 = new Thread(()->{
-            func3();
+        executor.execute(()->{
+            try{
+                func3();
+            }catch (Exception e){
+                System.err.println("Thread-3 HATA");
+            }
         });
-        t1.start();
-        t2.start();
-        t3.start();
-        t1.join();
-        t2.join();
-        t3.join();
-
     }
-
-    @Transactional
-    public void func1(){
-        for(var i = 50000; i < 55000; i++){
-            String query = "merge (m:Movie{custom:"+i+"})" +
-                    "merge(n:Movie{custom:"+(i+1)+"})" +
-                    "merge(m)-[r:bond]->(n)";
-            try (Session session = driver.session()) {
-                session.run(query);
-                System.err.println("FUNC1-->" + i);
-            }catch (Exception e){
-                throw e;
-            }
-        }
-        System.err.println("FUNC1-->END");
-    }
-
-    @Transactional
-    public void func2(){
-        for(var i = 55000; i < 60000; i++){
-            String query = "merge (m:Movie{custom:"+i+"})" +
-                    "merge(n:Movie{custom:"+(i+1)+"})" +
-                    "merge(m)-[r:bond]->(n)";
-            try (Session session = driver.session()) {
-                session.run(query);
-                System.err.println("FUNC2-->" + i);
-            }catch (Exception e){
-                throw e;
-            }
-        }
-        System.err.println("FUNC2-->END");
-    }
-    @Transactional
-    public void func3(){
-        for(var i = 65000; i < 65000; i++){
-            String query = "merge (m:Person{custom:"+i+"})" +
-                    "merge(n:Sahis{custom:"+(i+1)+"})" +
-                    "merge(m)-[r:bond]->(n)";
-            try (Session session = driver.session()) {
-                session.run(query);
-                System.err.println("FUNC3-->" + i);
-            }catch (Exception e){
-                throw e;
-            }
-        }
-        System.err.println("FUNC3-->END");
-    }
-
 }
+
+
+
+
