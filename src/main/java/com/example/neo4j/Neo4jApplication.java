@@ -1,22 +1,21 @@
 package com.example.neo4j;
 
 import com.example.neo4j.Repository.IMovieRepository;
-import com.example.neo4j.entity.Movie;
+import com.example.neo4j.entity.Ticket;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Session;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.data.neo4j.repository.config.EnableNeo4jRepositories;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.concurrent.Executor;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.Thread.sleep;
 
@@ -33,6 +32,7 @@ public class Neo4jApplication implements CommandLineRunner {
     public static void main(String[] args) {
         SpringApplication.run(Neo4jApplication.class, args);
     }
+
     @Transactional
     public void func1() throws InterruptedException {
         System.err.println("FUNC1-->Start");
@@ -86,6 +86,7 @@ public class Neo4jApplication implements CommandLineRunner {
         }
         System.err.println("FUNC3-->END");
     }
+
     @Override
     public void run(String... args) throws Exception {
 //        try(var session = driver.session()) {
@@ -126,25 +127,48 @@ public class Neo4jApplication implements CommandLineRunner {
         executor.setThreadNamePrefix("Executor-");  // Thread isimlendirme
         executor.initialize();
 
-        executor.execute(()->{
-           try{
-               func1();
-           }catch (Exception e){
-               System.err.println("Thread-1 HATA");
-           }
-        });
-        executor.execute(()->{
-            try{
-                func2();
-            }catch (Exception e){
-                System.err.println("Thread-2 HATA");
-            }
-        });
-        executor.execute(()->{
-            try{
-                func3();
-            }catch (Exception e){
-                System.err.println("Thread-3 HATA");
+//        executor.execute(()->{
+//           try{
+//               func1();
+//           }catch (Exception e){
+//               System.err.println("Thread-1 HATA");
+//           }
+//        });
+//        executor.execute(()->{
+//            try{
+//                func2();
+//            }catch (Exception e){
+//                System.err.println("Thread-2 HATA");
+//            }
+//        });
+//        executor.execute(()->{
+//            try{
+//                func3();
+//            }catch (Exception e){
+//                System.err.println("Thread-3 HATA");
+//            }
+//        });
+
+        List<Ticket> ticketList = new ArrayList<>();
+        for (var i = 0; i < 100; i++) {
+            Ticket ticket = new Ticket();
+            ticket.name = "test" + i;
+            ticket.description = "test";
+            ticketList.add(ticket);
+        }
+
+        Iterator<Ticket> iterator = ticketList.iterator();
+
+        executor.execute(() -> {
+            try {
+                while (iterator.hasNext()) {
+                    Ticket ticket1 = iterator.next();
+                    System.err.println(ticket1.name + " " + ticket1.description);
+                    iterator.remove();
+                }
+                System.err.println(ticketList.size());
+            } catch (Exception e) {
+                System.err.println("Thread-4 HATA");
             }
         });
     }
